@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.util.Date;
+import java.util.List;
 
 @Data
 @EqualsAndHashCode(callSuper = false)
@@ -12,5 +13,6 @@ public class SelectImageListRequestVO extends Page {
     private String fileName;
     private Date startTime;
     private Date endTime;
-    private Long tagAccessKey;
+    private Boolean focus;
+    private List<Long> tagAccessKeys;
 }

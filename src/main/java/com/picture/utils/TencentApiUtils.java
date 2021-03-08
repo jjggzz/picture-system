@@ -15,8 +15,8 @@ import java.util.*;
 
 public class TencentApiUtils {
     private static final String API_ADDRESS = "https://api.ai.qq.com/fcgi-bin/image/image_tag";
-    private static final Long APP_ID = 0L;
-    private static final String APP_KEY = "";
+    private static final Long APP_ID = 2166188829L;
+    private static final String APP_KEY = "Gaqg46cYnxHD1AXH";
 
     /**
      * 通过文件路径解析

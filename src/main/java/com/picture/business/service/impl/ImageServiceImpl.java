@@ -3,12 +3,12 @@ package com.picture.business.service.impl;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
-import com.picture.business.exception.BusinessExceptionEnum;
 import com.picture.business.mapper.ImageModelMapper;
 import com.picture.business.model.ImageModel;
 import com.picture.business.model.ImageModelExample;
-import com.picture.business.model.TagModel;
+import com.picture.business.model.TagImageModel;
 import com.picture.business.service.ImageService;
+import com.picture.business.service.TagImageService;
 import com.picture.business.service.TagService;
 import com.picture.business.vo.request.SelectImageListRequestVO;
 import com.picture.business.vo.response.ImageInfoResponseVO;
@@ -41,6 +41,9 @@ public class ImageServiceImpl extends BaseServiceImpl<ImageModel, ImageModelMapp
     private TagService tagService;
 
     @Resource
+    private TagImageService tagImageService;
+
+    @Resource
     @Override
     public void setMapper(ImageModelMapper mapper) {
         super.setMapper(mapper);
@@ -54,14 +57,26 @@ public class ImageServiceImpl extends BaseServiceImpl<ImageModel, ImageModelMapp
         String filePath = FilenameUtils.concat(FileConstant.IMAGE_PATH,
                 IdUtils.getInstance().nextId() + "." + FilenameUtils.getExtension(file.getOriginalFilename()));
 
-        // 解析图片
-        IdentifyImageResult identifyImageResult = TencentApiUtils.identifyImage(file.getBytes());
         // 封装参数
         ImageModel imageModel = this.newModel();
         imageModel.setAccessKey(IdUtils.getInstance().nextId());
+
+        imageModel.setUploadTime(new Date(System.currentTimeMillis()));
+        imageModel.setFilePath(filePath);
+        imageModel.setFileName(file.getOriginalFilename());
+        imageModel.setFileSize(file.getSize());
+        insert(imageModel);
+
+        // 解析图片
+        IdentifyImageResult identifyImageResult = TencentApiUtils.identifyImage(file.getBytes());
+        List<TagImageModel> tagImageModels = new ArrayList<>();
         // 如果不等于0解析失败,插入未定义
         if (identifyImageResult.getRet() != NumberConstant.INTEGER_0) {
-            imageModel.setFileTag("0");
+            TagImageModel tagImageModel = new TagImageModel();
+            tagImageModel.setAccessKey(IdUtils.getInstance().nextId());
+            tagImageModel.setImageId(imageModel.getId());
+            tagImageModel.setTagId(0L);
+            tagImageModels.add(tagImageModel);
         } else {
             // 获取置信度最高的三个标签
             List<String> tags = identifyImageResult.getData().getTag_list()
@@ -69,16 +84,18 @@ public class ImageServiceImpl extends BaseServiceImpl<ImageModel, ImageModelMapp
                     .sorted(Comparator.comparingInt(Tag::getTag_confidence).reversed()) //比较置信度,倒序
                     .map(Tag::getTag_name)
                     .collect(Collectors.toList());
+
             // 通过标签名获取标签id,前三个
             Map<String,Long> map = tagService.getTagIdByTagName(tags);
-            List<String> ids = map.values().stream().map(Object::toString).limit(3).collect(Collectors.toList());
-            imageModel.setFileTag(StringUtils.join(ids,','));
+            map.values().stream().limit(3).forEach(tagId -> {
+                TagImageModel tagImageModel = new TagImageModel();
+                tagImageModel.setAccessKey(IdUtils.getInstance().nextId());
+                tagImageModel.setImageId(imageModel.getId());
+                tagImageModel.setTagId(tagId);
+                tagImageModels.add(tagImageModel);
+            });
         }
-        imageModel.setUploadTime(new Date(System.currentTimeMillis()));
-        imageModel.setFilePath(filePath);
-        imageModel.setFileName(file.getOriginalFilename());
-        imageModel.setFileSize(file.getSize());
-        insert(imageModel);
+        tagImageService.saveList(tagImageModels);
         // 保存文件
         FileUtils.copyToFile(file.getInputStream(),new File(filePath));
         return ResultEntity.success();
@@ -89,25 +106,10 @@ public class ImageServiceImpl extends BaseServiceImpl<ImageModel, ImageModelMapp
 
         Page<ImageModel> imageModels = PageHelper.startPage(selectImageListRequestVO.getPageNum(), selectImageListRequestVO.getPageSize());
 
-        ImageModelExample imageModelExample = this.newExample();
-        ImageModelExample.Criteria criteria = imageModelExample.createCriteria();
-        criteria.andDeletedEqualTo(false);
         if (StringUtils.isNotEmpty(selectImageListRequestVO.getFileName())) {
-            criteria.andFileNameLike("%" + selectImageListRequestVO.getFileName() + "%");
+            selectImageListRequestVO.setFileName("%" + selectImageListRequestVO.getFileName() + "%");
         }
-        if (Objects.nonNull(selectImageListRequestVO.getStartTime())) {
-            criteria.andUploadTimeGreaterThanOrEqualTo(selectImageListRequestVO.getStartTime());
-        }
-        if (Objects.nonNull(selectImageListRequestVO.getEndTime())) {
-            criteria.andUploadTimeLessThanOrEqualTo(selectImageListRequestVO.getEndTime());
-        }
-        if (Objects.nonNull(selectImageListRequestVO.getTagAccessKey())) {
-            TagModel tagModel = tagService.getTagByAccessKey(selectImageListRequestVO.getTagAccessKey());
-            BusinessExceptionEnum.NO_QUERY_DATA.assertNotNull(tagModel,"该标签不存在");
-
-            criteria.andFileTagLike("%" + tagModel.getId() + "%");
-        }
-        this.mapper.selectByExample(imageModelExample);
+        this.mapper.selectImageList(selectImageListRequestVO);
 
         List<ImageInfoResponseVO> list = imageModels.stream().map(imageModel -> {
             ImageInfoResponseVO imageInfoResponseVO = new ImageInfoResponseVO();

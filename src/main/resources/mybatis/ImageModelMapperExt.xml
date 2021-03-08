@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.picture.business.mapper.ImageModelMapper">
+    
+  <select id="selectImageList"
+          parameterType="com.picture.business.vo.request.SelectImageListRequestVO"
+          resultMap="BaseResultMap">
+        select
+           ti.id,
+           ti.create_time,
+           ti.modified_time,
+           ti.deleted,
+           ti.access_key,
+           ti.upload_time,
+           ti.file_name,
+           ti.file_path,
+           ti.file_size,
+           ti.focus
+        from t_image ti
+        left join t_tag_image tti
+        on ti.id = tti.image_id
+        <where>
+          <if test="condition.fileName != null and condition.fileName != ''">
+            and ti.file_name like #{condition.fileName}
+          </if>
+          <if test="condition.startTime != null">
+            and ti.upload_time >= #{condition.startTime}
+          </if>
+          <if test="condition.endTime != null">
+            and ti.upload_time <![CDATA[ <= ]]> #{condition.endTime}
+          </if>
+          <if test="condition.focus != null">
+            and ti.focus = #{condition.focus}
+          </if>
+          <if test="condition.tagAccessKeys != null and condition.tagAccessKeys.size() > 0">
+            and tti.tag_id in
+            <foreach collection="condition.tagAccessKeys" item="item" open="(" close=")" separator=",">
+              #{item}
+            </foreach>
+          </if>
+        </where>
+  </select>
+  
+</mapper>

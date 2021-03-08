@@ -1,8 +1,6 @@
 package com.picture.business.service.impl;
 
 import com.picture.business.mapper.TagModelMapper;
-import com.picture.business.model.ImageModel;
-import com.picture.business.model.ImageModelExample;
 import com.picture.business.model.TagModel;
 import com.picture.business.model.TagModelExample;
 import com.picture.business.service.TagService;

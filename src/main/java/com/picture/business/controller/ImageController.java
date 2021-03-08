@@ -14,6 +14,7 @@ import javax.annotation.Resource;
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/image")
@@ -50,8 +51,10 @@ public class ImageController extends BaseController {
     @GetMapping("/getImage/{accessKey}")
     public void getImage(@PathVariable("accessKey") Long accessKey) throws IOException {
         File file = imageService.LoadFileByAccessKey(accessKey);
-        HttpServletResponse response = getResponse();
-        FileUtils.copyFile(file,response.getOutputStream());
+        if (Objects.nonNull(file)) {
+            HttpServletResponse response = getResponse();
+            FileUtils.copyFile(file,response.getOutputStream());
+        }
     }
 
 
