@@ -34,4 +34,12 @@ public interface ImageService extends BaseService<ImageModel, ImageModelExample>
      * @return
      */
     File LoadFileByAccessKey(Long accessKey);
+
+    /**
+     * 改变图片收藏状态
+     * @param accessKey
+     * @return
+     */
+    ResultEntity<Void> changeFocusImage(Long accessKey);
+
 }

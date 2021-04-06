@@ -137,4 +137,20 @@ public class ImageServiceImpl extends BaseServiceImpl<ImageModel, ImageModelMapp
         ImageModel imageModel = imageModels.get(0);
         return FileUtils.getFile(imageModel.getFilePath());
     }
+
+    @Override
+    public ResultEntity<Void> changeFocusImage(Long accessKey) {
+        ImageModelExample imageModelExample = new ImageModelExample();
+        imageModelExample.createCriteria()
+                .andDeletedEqualTo(false)
+                .andAccessKeyEqualTo(accessKey);
+        List<ImageModel> imageModels = selectByExample(imageModelExample);
+        if (CollectionUtils.isEmpty(imageModels)) {
+            return ResultEntity.failure("图片不存在");
+        }
+        ImageModel imageModel = imageModels.get(0);
+        // 设置为相反状态
+        imageModel.setFocus(!imageModel.getFocus());
+        return ResultEntity.success();
+    }
 }

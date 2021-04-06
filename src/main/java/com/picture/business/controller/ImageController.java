@@ -1,9 +1,12 @@
 package com.picture.business.controller;
 
 import com.github.pagehelper.PageInfo;
+import com.picture.business.async.FileListAsyncParsingHandler;
 import com.picture.business.service.ImageService;
 import com.picture.business.vo.request.SelectImageListRequestVO;
 import com.picture.business.vo.response.ImageInfoResponseVO;
+import com.springboot.simple.base.async.EventPusher;
+import com.springboot.simple.base.async.event.BaseEvent;
 import com.springboot.simple.controller.BaseController;
 import com.springboot.simple.res.ResultEntity;
 import org.apache.commons.io.FileUtils;
@@ -14,6 +17,7 @@ import javax.annotation.Resource;
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.Objects;
 
 @RestController
@@ -22,6 +26,9 @@ public class ImageController extends BaseController {
 
     @Resource
     private ImageService imageService;
+
+    @Resource
+    private EventPusher eventPusher;
 
     /**
      * 解析图片
@@ -33,6 +40,20 @@ public class ImageController extends BaseController {
     public ResultEntity<Void> uploadImage(MultipartFile file) throws Exception {
         return result(file, imageService::parsingImage);
     }
+
+    /**
+     * 解析图片列表
+     * @param fileList
+     * @return
+     * @throws IOException
+     */
+    @PostMapping("/uploadImageList")
+    public ResultEntity<Void> uploadImageList(List<MultipartFile> fileList) throws Exception {
+        FileListAsyncParsingHandler fileListAsyncParsingHandler = new FileListAsyncParsingHandler(fileList,imageService::parsingImage);
+        eventPusher.eventPush(new BaseEvent(fileListAsyncParsingHandler));
+        return ResultEntity.success();
+    }
+
 
     /**
      * 分页获取图片
@@ -57,6 +78,16 @@ public class ImageController extends BaseController {
         }
     }
 
+    /**
+     * 改变图片收藏状态
+     * @param accessKey
+     * @return
+     * @throws Exception
+     */
+    @GetMapping("/focusImage/{accessKey}")
+    public ResultEntity<Void> changeFocusImage(@PathVariable("accessKey") Long accessKey) throws Exception{
+        return result(accessKey, imageService::changeFocusImage);
+    }
 
 
 }
